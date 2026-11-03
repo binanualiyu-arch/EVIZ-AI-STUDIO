@@ -1,7 +1,8 @@
-
 export default async function handler(req, res) {
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+    return res.status(405).json({
+      error: "Method not allowed"
+    });
   }
 
   const key = process.env.OPENROUTER_API_KEY;
@@ -47,7 +48,7 @@ export default async function handler(req, res) {
           model,
           messages,
           stream: false,
-          max_tokens: 2048
+          max_tokens: 512
         })
       }
     );
