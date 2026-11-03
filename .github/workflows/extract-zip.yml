@@ -1,0 +1,36 @@
+
+name: Extract EVIZ AI Studio ZIP
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/extract-zip.yml"
+      - "eviz-ai-creative-studio.zip"
+
+permissions:
+  contents: write
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract website files
+        run: |
+          unzip -o eviz-ai-creative-studio.zip -d .
+
+      - name: Commit extracted files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git reset -- eviz-ai-creative-studio.zip
+          if ! git diff --cached --quiet; then
+            git commit -m "Extract EVIZ AI Studio website files"
+            git push
+          fi
