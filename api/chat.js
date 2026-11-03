@@ -1,5 +1,5 @@
 export default async function handler(req, res) {
-  if (req.method !== "GET") {
+  if (req.method !== "POST") {
     return res.status(405).json({
       error: "Method not allowed"
     });
@@ -13,13 +13,42 @@ export default async function handler(req, res) {
     });
   }
 
+  const { model, messages } = req.body || {};
+
+  if (
+    typeof model !== "string" ||
+    !Array.isArray(messages) ||
+    messages.length === 0 ||
+    messages.length > 40 ||
+    messages.some(
+      m =>
+        !m ||
+        !["user", "assistant"].includes(m.role) ||
+        typeof m.content !== "string"
+    )
+  ) {
+    return res.status(400).json({
+      error: "Invalid conversation."
+    });
+  }
+
   try {
     const response = await fetch(
-      "https://openrouter.ai/api/v1/models",
+      "https://openrouter.ai/api/v1/chat/completions",
       {
+        method: "POST",
         headers: {
-          Authorization: `Bearer ${key}`
-        }
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://eviz-ai-studio.vercel.app",
+          "X-Title": "EVIZ AI STUDIO"
+        },
+        body: JSON.stringify({
+          model,
+          messages,
+          stream: false,
+          max_tokens: 512
+        })
       }
     );
 
@@ -27,47 +56,23 @@ export default async function handler(req, res) {
 
     if (!response.ok) {
       return res.status(response.status).json({
-        error:
-          data?.error?.message ||
-          "Unable to load OpenRouter models."
+        error: data?.error?.message || "OpenRouter request failed."
       });
     }
 
-    const models = (data.data || [])
-      .filter(model => {
-        if (!model.id || !model.name) {
-          return false;
-        }
+    const reply = data?.choices?.[0]?.message?.content;
 
-        const inputPrice = Number(model.pricing?.prompt);
-        const outputPrice = Number(model.pricing?.completion);
+    if (typeof reply !== "string") {
+      return res.status(502).json({
+        error: "The AI model returned no text."
+      });
+    }
 
-        return (
-          model.id.endsWith(":free") ||
-          (
-            Number.isFinite(inputPrice) &&
-            Number.isFinite(outputPrice) &&
-            inputPrice === 0 &&
-            outputPrice === 0
-          )
-        );
-      })
-      .map(model => ({
-        id: model.id,
-        name: model.name
-      }))
-      .sort((a, b) =>
-        a.name.localeCompare(b.name)
-      );
-
-    return res.status(200).json({
-      models,
-      count: models.length
-    });
+    return res.status(200).json({ reply });
 
   } catch (error) {
     return res.status(502).json({
-      error: "Could not connect to OpenRouter."
+      error: "Unable to connect to OpenRouter."
     });
   }
 }
