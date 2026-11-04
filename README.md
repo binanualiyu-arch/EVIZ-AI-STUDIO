@@ -1,24 +1,7 @@
-# EVIZ AI Studio
+# EVIZ AI STUDIO v2
 
-A mobile-first AI creator workspace with:
-- OpenRouter model chat
-- Creator workflows: documentary scripts, cinematic shot lists, storyboard prompts, YouTube packaging
-- Video Studio UI for text-to-video and image-to-video requests
+Keep OPENROUTER_API_KEY configured in Vercel. Never put API keys in this ZIP.
 
-## Deploy
+Features: OpenRouter AI Chat, Creator Desk for original documentary/commentary scripts, best-effort public article research, and Video Studio marked Coming Soon.
 
-1. Revoke any API key previously pasted into a chat or public place. Create a fresh OpenRouter key at https://openrouter.ai/settings/keys.
-2. Upload the contents of this folder to a GitHub repository.
-3. Import the repository into Vercel.
-4. Add `OPENROUTER_API_KEY` in Vercel → Project → Settings → Environment Variables.
-5. Deploy and open the URL on iPhone Safari. Use Share → Add to Home Screen.
-
-## Video rendering is a separate integration
-
-The Video Studio screen is included, but it does not magically render video through OpenRouter. To enable rendering, choose a video provider that offers an API and adapt `api/video.js` to its documented request, job polling, and output response format. Add provider credentials only as Vercel environment variables:
-- `VIDEO_API_URL`
-- `VIDEO_API_KEY`
-
-Do not place API keys in `public/index.html` or commit them to GitHub. Different video providers have different API schemas, model access, pricing, duration limits and image-upload requirements. This starter deliberately does not pretend that a generic endpoint can work with every provider.
-
-Chat conversations are stored in the browser's local storage and are not synced between devices. The current video endpoint is a generic adapter placeholder; a production integration should include provider-specific job polling, upload handling, rate limits, usage caps and error handling.
+Replace the existing eviz-ai-creative-studio.zip in the GitHub repository root with this ZIP. The repository's ZIP extraction workflow should unpack and commit the files, after which Vercel should deploy.

@@ -1,0 +1,12 @@
+function strip(h){return h.replace(/<script[\s\S]*?<\/script>/gi," ").replace(/<style[\s\S]*?<\/style>/gi," ").replace(/<[^>]+>/g," ").replace(/&nbsp;/g," ").replace(/&amp;/g,"&").replace(/\s+/g," ").trim().slice(0,5000);}
+function safeUrl(s){try{const u=new URL(s);const h=u.hostname.toLowerCase();return ["http:","https:"].includes(u.protocol)&&h&&!["localhost","127.0.0.1","0.0.0.0"].includes(h)&&!h.endsWith(".localhost")&&!h.startsWith("10.")&&!h.startsWith("192.168.")&&!h.startsWith("172.16.")&&!h.startsWith("169.254.");}catch{return false;}}
+export default async function handler(req,res){
+ if(req.method!=="POST"){res.setHeader("Allow","POST");return res.status(405).json({error:"Method not allowed"});}
+ const topic=String(req.body?.topic||"").trim().slice(0,300),url=String(req.body?.referenceUrl||"").trim().slice(0,1500);if(!topic&&!url)return res.status(400).json({error:"Enter a topic or reference link."});
+ let articles=[],reference=null;
+ try{const u=new URL("https://api.gdeltproject.org/api/v2/doc/doc");u.searchParams.set("query",topic||url);u.searchParams.set("mode","ArtList");u.searchParams.set("format","json");u.searchParams.set("sort","DateDesc");u.searchParams.set("maxrecords","8");
+ try{const r=await fetch(u.toString());if(r.ok){const d=await r.json();articles=(d.articles||[]).slice(0,8).map(a=>({title:a.title||"Untitled",url:a.url||"",source:a.domain||"",date:a.seendate||""}));}}catch{}
+ if(url){if(!safeUrl(url))reference={url,note:"This link could not be safely fetched."};else try{const r=await fetch(url,{redirect:"follow",headers:{"User-Agent":"Mozilla/5.0 (compatible; EVIZAIStudio/2.0)"},signal:AbortSignal.timeout(7000)});if(r.ok&&(r.headers.get("content-type")||"").includes("text/html"))reference={url,pageText:strip(await r.text())};else reference={url,note:"Page did not expose readable public HTML."};}catch{reference={url,note:"Could not retrieve page text. Paste the transcript or key details into the notes box."};}}
+ return res.status(200).json({articles,reference,notice:"Research results are leads, not proof. Verify dates, claims and context. Video platforms may block transcript access; this tool does not claim to watch videos."});
+ }catch{return res.status(502).json({error:"Research is temporarily unavailable. You can still generate from details you provide."});}
+}

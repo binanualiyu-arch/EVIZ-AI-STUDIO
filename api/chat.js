@@ -1,78 +1,12 @@
-export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({
-      error: "Method not allowed"
-    });
-  }
-
-  const key = process.env.OPENROUTER_API_KEY;
-
-  if (!key) {
-    return res.status(500).json({
-      error: "OpenRouter API key is not configured."
-    });
-  }
-
-  const { model, messages } = req.body || {};
-
-  if (
-    typeof model !== "string" ||
-    !Array.isArray(messages) ||
-    messages.length === 0 ||
-    messages.length > 40 ||
-    messages.some(
-      m =>
-        !m ||
-        !["user", "assistant"].includes(m.role) ||
-        typeof m.content !== "string"
-    )
-  ) {
-    return res.status(400).json({
-      error: "Invalid conversation."
-    });
-  }
-
-  try {
-    const response = await fetch(
-      "https://openrouter.ai/api/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${key}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": "https://eviz-ai-studio.vercel.app",
-          "X-Title": "EVIZ AI STUDIO"
-        },
-        body: JSON.stringify({
-          model,
-          messages,
-          stream: false,
-          max_tokens: 512
-        })
-      }
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      return res.status(response.status).json({
-        error: data?.error?.message || "OpenRouter request failed."
-      });
-    }
-
-    const reply = data?.choices?.[0]?.message?.content;
-
-    if (typeof reply !== "string") {
-      return res.status(502).json({
-        error: "The AI model returned no text."
-      });
-    }
-
-    return res.status(200).json({ reply });
-
-  } catch (error) {
-    return res.status(502).json({
-      error: "Unable to connect to OpenRouter."
-    });
-  }
+const CHAT="You are EVIZ AI STUDIO's assistant. Be direct, accurate, and useful. Never invent facts or sources.";
+const CREATOR=`You are a rigorous YouTube documentary and celebrity-news story producer. Create original commentary, never copy another creator's narration. Separate verified facts, allegations, and speculation. Never fabricate quotes, dates, legal outcomes, footage, social posts, or URLs. If source material is thin, state what needs verification. A reference link does not mean you watched the video or retrieved its transcript; use only supplied text and retrieved excerpts. Write naturally for voiceover, without filler. Deliver: 3 clickable title options; a 15-25 second hook; complete narration for requested duration at about 130-145 words/minute; visual/B-roll and evidence suggestions by story beat; fact-check checklist; YouTube description and hashtags; source links as leads to verify.`;
+function textOf(c){if(typeof c==="string")return c;if(Array.isArray(c))return c.map(x=>typeof x==="string"?x:(x?.text||"")).join("\n");return "";}
+export default async function handler(req,res){
+ if(req.method!=="POST"){res.setHeader("Allow","POST");return res.status(405).json({error:"Method not allowed"});}
+ const key=process.env.OPENROUTER_API_KEY;if(!key)return res.status(500).json({error:"OPENROUTER_API_KEY is not configured in Vercel."});
+ try{const {model,messages,taskType,creatorContext}=req.body||{};if(!model||!Array.isArray(messages)||!messages.length)return res.status(400).json({error:"Choose a model and enter a message."});
+ const creator=taskType==="creator";const safe=messages.slice(-18).map(m=>({role:m.role==="assistant"?"assistant":"user",content:typeof m.content==="string"?m.content.slice(0,30000):""})).filter(m=>m.content);
+ const r=await fetch("https://openrouter.ai/api/v1/chat/completions",{method:"POST",headers:{Authorization:`Bearer ${key}`,"Content-Type":"application/json","HTTP-Referer":"https://eviz-ai-studio.vercel.app","X-Title":"EVIZ AI STUDIO"},body:JSON.stringify({model,messages:[{role:"system",content:(creator?CREATOR:CHAT)+(creator&&creatorContext?"\n\nSETTINGS: "+JSON.stringify(creatorContext):"")},...safe],max_tokens:creator?6000:1400,temperature:.7})});
+ const d=await r.json();if(!r.ok)return res.status(r.status).json({error:d?.error?.message||"Model request failed."});const content=textOf(d?.choices?.[0]?.message?.content);if(!content.trim())return res.status(502).json({error:"The selected model returned an empty response. Try another model."});return res.status(200).json({content});
+ }catch{return res.status(500).json({error:"Unexpected server error while contacting the AI model."});}
 }
